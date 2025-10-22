@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ayurvedic Glossary – Flip Cards</title>
+  <style>
+    :root{
+      --bg:#0b1020;           /* deep ink */
+      --card:#121a33;         /* card base */
+      --accent:#7dd3fc;       /* cyan */
+      --accent-2:#a78bfa;     /* violet */
+      --text:#e6edf6;         /* text */
+      --muted:#9fb0c7;
+      --ok:#34d399;           /* green */
+      --warn:#fbbf24;         /* amber */
+      --danger:#fb7185;       /* rose */
+      --chip:#1a2444;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 80% -10%, #1b2650 0%, #0b1020 60%) no-repeat var(--bg);
+      color:var(--text); font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    .wrap{max-width:1200px; margin:28px auto; padding:0 16px;}
+
+    header{display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:14px}
+    header h1{font-size:clamp(20px,3vw,28px); margin:0; letter-spacing:.3px}
+    header .meta{color:var(--muted); font-size:14px}
+
+    .toolbar{
+      display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:center;
+      background:linear-gradient(180deg, #121a33 0%, #0e1630 100%); padding:12px; border-radius:16px; box-shadow:var(--shadow);
+      border:1px solid #1f2b55;
+    }
+    .toolbar input[type="search"]{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid #263566; background:#0c142c; color:var(--text);
+      outline:none; box-shadow:inset 0 0 0 1px rgba(125,211,252,.06);
+    }
+    .toolbar .controls{display:flex; gap:8px; flex-wrap:wrap}
+    .btn{
+      appearance:none; border:none; padding:10px 12px; border-radius:12px; color:#0b1020; background:var(--accent); font-weight:700; cursor:pointer;
+      transition:transform .06s ease, box-shadow .2s ease; box-shadow:0 6px 18px rgba(125,211,252,.25);
+    }
+    .btn.secondary{background:var(--accent-2); color:#0b1020; box-shadow:0 6px 18px rgba(167,139,250,.28)}
+    .btn.ghost{background:transparent; color:var(--text); border:1px solid #263566}
+    .btn:active{transform:translateY(1px)}
+
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 0}
+    .chip{padding:6px 10px; border-radius:999px; background:var(--chip); color:var(--muted); font-size:12px; border:1px solid #22305d; cursor:pointer}
+    .chip.active{color:#0b1020; background:var(--accent); border-color:transparent}
+
+    .grid{
+      margin-top:18px; display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    }
+
+    .card{
+      perspective:1000px;
+    }
+    .card-inn{
+      position:relative; transform-style:preserve-3d; transition:transform .6s cubic-bezier(.2,.8,.2,1);
+      box-shadow:var(--shadow); border-radius:var(--radius);
+    }
+    .card.flipped .card-inn{ transform:rotateY(180deg) }
+    .face{
+      position:relative; padding:18px; min-height:210px; border-radius:var(--radius); background:linear-gradient(180deg,#121a33 0%, #0e1630 100%);
+      border:1px solid #1f2b55; backface-visibility:hidden;
+    }
+    .face.back{ transform:rotateY(180deg); position:absolute; inset:0; }
+
+    .term{font-weight:800; font-size:18px; margin:0 0 6px}
+    .meta-row{display:flex; gap:8px; align-items:center; color:var(--muted); font-size:12px; margin-bottom:10px}
+    .badge{padding:3px 8px; border-radius:999px; background:#0e1733; border:1px solid #22305d; color:var(--muted)}
+    .translation{color:var(--accent); font-weight:700}
+
+    .definition{font-size:14px; color:#d6e2f1}
+
+    .card-actions{display:flex; justify-content:space-between; margin-top:12px}
+    .tiny{font-size:12px; color:var(--muted)}
+
+    footer{margin:26px 0 60px; color:var(--muted); text-align:center; font-size:12px}
+
+    .empty{opacity:.8; text-align:center; padding:28px; border:1px dashed #243567; border-radius:16px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Ayurvedic Glossary – Flip Cards</h1>
+        <div class="meta">Tap any card to flip. Search, filter by category, shuffle, and study.</div>
+      </div>
+      <div class="meta">Version 3.0 · Digital Textbook → Flashcards</div>
+    </header>
+
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Search by term, translation, category, or text… (e.g., ‘Agni’, ‘Fire’, ‘Dosha’)" />
+      <div class="controls">
+        <button class="btn" id="shuffle">Shuffle</button>
+        <button class="btn secondary" id="reset">Reset</button>
+        <button class="btn ghost" id="showAll">Flip All</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+    <footer>Built for quick study. Clean and linear definitions from your A–Z glossary with literal translations.</footer>
+  </div>
+
+  <script>
+    const DATA = [
+      // A
+      {term:"Abhyanga", translation:"Oil Massage", category:"Therapy", definition:"Full-body application of warm, often herbalized oil. Nourishes skin and tissues, promotes circulation, balances doshas, calms the nervous system; also used before Panchakarma."},
+      {term:"Agni", translation:"Fire", category:"Metabolic Principle", definition:"Digestive and metabolic fire governing transformation of food and experience. Balanced Agni sustains health; impaired Agni produces Ama (toxins)."},
+      {term:"Ahara", translation:"Food / Diet", category:"Foundational Concept", definition:"Diet as a pillar of health; chosen according to Prakriti, season (Ritucharya), and digestive strength (Agni)."},
+      {term:"Ama", translation:"Toxin", category:"Pathological Concept", definition:"Undigested residue/toxicity formed when Agni is weak; obstructs Srotas, disturbs doshas, core cause of many diseases."},
+      {term:"Anupana", translation:"Vehicle Substance", category:"Pharmacology", definition:"Carrier medium (milk, honey, ghee, warm water) taken with herbs to enhance absorption and target effect."},
+      {term:"Asthi Dhatu", translation:"Bone Tissue", category:"Anatomy", definition:"One of seven Dhatus; provides structure and stability, houses marrow (Majja)."},
+      {term:"Atman", translation:"Self", category:"Philosophy", definition:"True Self or pure consciousness beyond body and mind; realization relates to ultimate health and liberation (Moksha)."},
+      {term:"Ayurveda", translation:"Science of Life", category:"Foundational Concept", definition:"Traditional Indian system harmonizing body, mind, and spirit with diet, lifestyle, herbs, and therapies; literally ‘knowledge of life’."},
+      // B
+      {term:"Basti", translation:"Enema Therapy", category:"Therapy", definition:"Herbal enema central to Panchakarma; detoxifies, rejuvenates, and especially balances Vata Dosha."},
+      {term:"Bibhitaki", translation:"Baheda Fruit", category:"Herb", definition:"One of the three fruits in Triphala; supports digestion and respiration, reduces Kapha, aids detoxification."},
+      {term:"Brahmacharya", translation:"Moderation", category:"Lifestyle Principle", definition:"Right use of energy; conserving Ojas through balanced physical, emotional, and sexual activities."},
+      // C
+      {term:"Charaka Samhita", translation:"Charaka’s Compendium", category:"Classical Text", definition:"Foundational scripture of Ayurveda focused on internal medicine, pathology, and preventive health."},
+      {term:"Chikitsa", translation:"Treatment", category:"Therapy", definition:"Science of therapeutic intervention: preventive, curative, and rejuvenative."},
+      {term:"Chyavanprash", translation:"Rejuvenative Jam", category:"Herbal Preparation", definition:"Classical tonic of Amalaki, ghee, honey, and herbs; promotes longevity, immunity, and vitality."},
+      // D
+      {term:"Dharma", translation:"Righteous Duty", category:"Philosophy", definition:"Living in harmony with one’s true nature and purpose; central to health and balance."},
+      {term:"Dhatu", translation:"Body Tissue", category:"Anatomy", definition:"Seven tissues: Rasa (plasma), Rakta (blood), Mamsa (muscle), Meda (fat), Asthi (bone), Majja (marrow/nerve), Shukra (reproductive)."},
+      {term:"Dinacharya", translation:"Daily Routine", category:"Lifestyle", definition:"Regimen aligned with nature’s cycles: early rising, cleansing, oiling, yoga, meditation for maintenance of balance."},
+      {term:"Dosha", translation:"Biological Energy", category:"Constitutional Principle", definition:"Three governing forces: Vata (Air+Ether) – movement/communication; Pitta (Fire+Water) – digestion/transformation; Kapha (Earth+Water) – structure/stability."},
+      {term:"Dravya", translation:"Substance", category:"Pharmacology", definition:"Therapeutic substance (food, herb, mineral) analyzed by Rasa (taste), Virya (potency), Vipaka (post-digestive effect), and Guna (quality)."},
+      // E
+      {term:"Ether", translation:"Space", category:"Element", definition:"Subtlest of the five elements (Pancha Mahabhuta); openness and expansiveness, medium for interaction."},
+      // G
+      {term:"Gandusha", translation:"Oil Pulling", category:"Therapy", definition:"Swishing oil to remove oral toxins, strengthen gums, support digestion."},
+      {term:"Ghee", translation:"Clarified Butter", category:"Substance", definition:"Purified butter used internally/externally; enhances digestion, nourishes tissues, carries herbs, builds Ojas."},
+      {term:"Guna", translation:"Quality", category:"Philosophy / Pharmacology", definition:"Inherent attributes (heavy/light, hot/cold, oily/dry). In mind: Sattva (clarity), Rajas (activity), Tamas (inertia)."},
+      // H
+      {term:"Haritaki", translation:"Myrobalan Fruit", category:"Herb", definition:"Rejuvenative and cleansing; balances Vata, promotes elimination, supports longevity. One of the three in Triphala."},
+      // K
+      {term:"Kapha", translation:"Water and Earth", category:"Dosha", definition:"Governs stability, lubrication, immunity. Balance → calm endurance; excess → lethargy, congestion."},
+      {term:"Karma", translation:"Action and Effect", category:"Philosophy", definition:"Universal cause-and-effect shaping health and destiny via thoughts, words, deeds."},
+      {term:"Karma Yoga", translation:"Selfless Action", category:"Spiritual Practice", definition:"Acting without attachment to outcomes; purifies mind and reduces ego fixation."},
+      {term:"Koshtha", translation:"Digestive State", category:"Physiology", definition:"Nature of bowel function—soft, hard, or balanced—according to doshic predominance."},
+      // M
+      {term:"Mala", translation:"Waste", category:"Physiology", definition:"Body’s excretions: Purisha (feces), Mutra (urine), Sveda (sweat). Proper elimination signals health."},
+      {term:"Manas", translation:"Mind", category:"Psychology", definition:"Mental faculty governing perception and emotion; requires nourishment and cleansing like the body."},
+      {term:"Marma", translation:"Vital Point", category:"Anatomy / Energy System", definition:"Energy junctions used in therapeutic massage and healing."},
+      {term:"Majja Dhatu", translation:"Marrow / Nerve Tissue", category:"Anatomy", definition:"Supports strength, coordination, and nervous system stability."},
+      {term:"Moksha", translation:"Liberation", category:"Philosophy", definition:"Freedom from the cycle of birth and death; ultimate goal of life and supreme health state."},
+      // N
+      {term:"Nasya", translation:"Nasal Therapy", category:"Therapy", definition:"Applying herbal oils/powders through nostrils to cleanse and nourish head region; improves clarity and senses."},
+      {term:"Neti", translation:"Nasal Cleansing", category:"Cleansing Practice", definition:"Rinsing nasal passages with saline via Neti pot; purifies sinuses and supports breath."},
+      {term:"Nidana", translation:"Cause", category:"Diagnosis", definition:"Determining disease origin via diet, lifestyle, emotion, and environment analysis."},
+      // O
+      {term:"Ojas", translation:"Vital Essence", category:"Subtle Energy", definition:"Subtle essence of tissues representing immunity, strength, and spiritual vigor; foundation of endurance and serenity."},
+      // P
+      {term:"Panchakarma", translation:"Five Actions", category:"Therapeutic System", definition:"Purification system: Vamana (emesis), Virechana (purgation), Basti (enema), Nasya (nasal therapy), Raktamokshana (bloodletting)."},
+      {term:"Pitta", translation:"Fire and Water", category:"Dosha", definition:"Governs digestion, metabolism, transformation. Balance → intelligence/vitality; excess → inflammation/irritability."},
+      {term:"Prakriti", translation:"Nature / Constitution", category:"Constitutional Concept", definition:"Innate physiological/psychological makeup determined at conception; remains constant."},
+      {term:"Prana", translation:"Life Force", category:"Vital Energy", definition:"Subtle energy governing movement, respiration, consciousness; flows through Nadis (energy channels)."},
+      {term:"Purusha", translation:"Consciousness", category:"Philosophy", definition:"Pure awareness distinct from material nature (Prakriti); harmony with Prakriti sustains health."},
+      // R
+      {term:"Rakta Dhatu", translation:"Blood Tissue", category:"Anatomy", definition:"Nourishes and vitalizes; commonly disturbed by excess Pitta."},
+      {term:"Rasa", translation:"Taste / Plasma", category:"Pharmacology / Anatomy", definition:"Both taste category of substances and the plasma tissue (first Dhatu)."},
+      {term:"Rasayana", translation:"Rejuvenation", category:"Therapy", definition:"Diet, herbs, and lifestyle aimed at longevity, vitality, and mental clarity; builds Ojas."},
+      {term:"Ritucharya", translation:"Seasonal Regimen", category:"Lifestyle", definition:"Diet and lifestyle adjustments per season to maintain doshic balance."},
+      // S
+      {term:"Samkhya", translation:"Enumeration Philosophy", category:"Philosophy", definition:"Creation described via duality of Purusha (consciousness) and Prakriti (matter); Ayurveda’s metaphysical basis."},
+      {term:"Samprapti", translation:"Pathogenesis", category:"Diagnosis", definition:"Disease development sequence: accumulation, aggravation, spread, manifestation, complication of doshas."},
+      {term:"Samskara", translation:"Impression", category:"Psychology", definition:"Mental imprints from past experience shaping habits and behaviors."},
+      {term:"Sattva / Rajas / Tamas", translation:"Clarity / Activity / Inertia", category:"Philosophy", definition:"Three gunas of the psyche governing mental state and behavior."},
+      {term:"Shamana", translation:"Pacification", category:"Therapy", definition:"Balancing treatment to reduce aggravated doshas without elimination."},
+      {term:"Shodhana", translation:"Purification", category:"Therapy", definition:"Deep cleansing (notably Panchakarma) to remove toxins and Ama from tissues."},
+      {term:"Shukra Dhatu", translation:"Reproductive Tissue", category:"Anatomy", definition:"Associated with fertility, creativity, and production of Ojas."},
+      {term:"Shirodhara", translation:"Oil Stream Therapy", category:"Therapy", definition:"Continuous warm oil poured on forehead to calm mind and nervous system."},
+      {term:"Snehana", translation:"Oleation", category:"Therapy", definition:"Internal and external oiling to loosen toxins and nourish tissues prior to cleansing."},
+      {term:"Srotas", translation:"Channel", category:"Physiology", definition:"Transport pathways for nutrients, wastes, energies; blockage (Srotorodha) leads to disease."},
+      {term:"Swedana", translation:"Sudation Therapy", category:"Therapy", definition:"Induced sweating with herbal steam to open pores and expel toxins."},
+      {term:"Swastha", translation:"Health", category:"Concept", definition:"Equilibrium of doshas, dhatus, malas, agni, and mind—the Ayurvedic ideal of health."},
+      // T
+      {term:"Tejas", translation:"Radiance", category:"Subtle Energy", definition:"Refined fire essence governing metabolism and cellular intelligence; works with Prana and Ojas."},
+      {term:"Tridosha", translation:"Three Humors", category:"Constitutional Theory", definition:"Dynamic balance of Vata, Pitta, Kapha that maintains health."},
+      {term:"Triphala", translation:"Three Fruits", category:"Herbal Formula", definition:"Blend of Amalaki, Haritaki, Bibhitaki supporting digestion, detox, and rejuvenation."},
+      // V
+      {term:"Vata", translation:"Air and Ether", category:"Dosha", definition:"Governs motion, breathing, circulation, neural activity; imbalance causes dryness, anxiety, irregularity."},
+      {term:"Veda", translation:"Knowledge", category:"Foundational Concept", definition:"Sacred knowledge/illumination regarding life’s principles and reality."},
+      {term:"Vikruti", translation:"Imbalance", category:"Diagnosis", definition:"Current state of doshic disturbance differing from innate Prakriti."},
+      {term:"Vipaka", translation:"Post-Digestive Effect", category:"Pharmacology", definition:"Long-term effect of substances after digestion."},
+      {term:"Virya", translation:"Potency", category:"Pharmacology", definition:"Energetic action of a substance—heating (Ushna) or cooling (Shita)."},
+      {term:"Virechana", translation:"Purgation", category:"Therapy", definition:"Therapeutic laxation to remove excess Pitta and toxins."},
+      {term:"Vamana", translation:"Emesis", category:"Therapy", definition:"Therapeutic vomiting to clear Kapha-related accumulations."},
+      {term:"Vihara", translation:"Lifestyle Habit", category:"Lifestyle", definition:"Daily activities influencing health; foundation with Ahara (diet)."},
+      // Y
+      {term:"Yoga", translation:"Union", category:"Philosophy / Practice", definition:"Integration of body, breath, and mind via postures, breathwork, and meditation; complements Ayurveda."},
+      {term:"Pranayama", translation:"Breath Regulation", category:"Therapy", definition:"Controlled breathing practices that balance Prana and doshas."}
+    ];
+
+    // Build category filter chips
+    const categories = Array.from(new Set(DATA.map(d=>d.category)));
+    const chipsEl = document.getElementById('chips');
+    const state = {q:"", cats:new Set(), flippedAll:false};
+
+    function chip(label){
+      const c = document.createElement('button');
+      c.className = 'chip';
+      c.textContent = label;
+      c.addEventListener('click', ()=>{
+        if(state.cats.has(label)) state.cats.delete(label); else state.cats.add(label);
+        c.classList.toggle('active');
+        render();
+      });
+      return c;
+    }
+    chipsEl.append(chip('All'));
+    categories.forEach(cat=> chipsEl.append(chip(cat)) );
+
+    function match(d){
+      const q = state.q.trim().toLowerCase();
+      const inQuery = !q || [d.term,d.translation,d.category,d.definition].some(v => v.toLowerCase().includes(q));
+      const catOk = state.cats.size===0 || state.cats.has('All') || state.cats.has(d.category);
+      return inQuery && catOk;
+    }
+
+    const grid = document.getElementById('grid');
+
+    function card(data){
+      const root = document.createElement('div');
+      root.className = 'card';
+      const inn = document.createElement('div'); inn.className='card-inn';
+      const front = document.createElement('div'); front.className='face front';
+      const back = document.createElement('div'); back.className='face back';
+
+      front.innerHTML = `
+        <div class="meta-row">
+          <span class="badge">${data.category}</span>
+          <span class="translation">${data.translation}</span>
+        </div>
+        <h3 class="term">${data.term}</h3>
+        <p class="definition tiny">Tap to flip for definition →</p>
+      `;
+      back.innerHTML = `
+        <div class="meta-row">
+          <span class="badge">${data.category}</span>
+          <span class="translation">${data.translation}</span>
+        </div>
+        <h3 class="term">${data.term}</h3>
+        <p class="definition">${data.definition}</p>
+      `;
+
+      inn.append(front, back);
+      root.append(inn);
+      root.addEventListener('click', ()=> root.classList.toggle('flipped'));
+      if(state.flippedAll) root.classList.add('flipped');
+      return root;
+    }
+
+    function render(){
+      grid.innerHTML = '';
+      const items = DATA.filter(match);
+      if(items.length===0){
+        const empty = document.createElement('div');
+        empty.className='empty';
+        empty.textContent = 'No cards match your filters. Try clearing search or category.';
+        grid.append(empty);
+        return;
+      }
+      items.forEach(d => grid.append(card(d)));
+    }
+
+    // Search
+    document.getElementById('q').addEventListener('input', (e)=>{ state.q = e.target.value; render(); });
+
+    // Shuffle
+    document.getElementById('shuffle').addEventListener('click', ()=>{
+      for(let i=DATA.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [DATA[i],DATA[j]]=[DATA[j],DATA[i]]; }
+      render();
+    });
+
+    // Reset
+    document.getElementById('reset').addEventListener('click', ()=>{
+      state.q=''; document.getElementById('q').value='';
+      state.cats.clear();
+      document.querySelectorAll('.chip').forEach(el=> el.classList.remove('active'));
+      state.flippedAll=false;
+      render();
+    });
+
+    // Flip all
+    document.getElementById('showAll').addEventListener('click', ()=>{
+      state.flippedAll = !state.flippedAll;
+      document.getElementById('showAll').textContent = state.flippedAll ? 'Unflip All' : 'Flip All';
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
